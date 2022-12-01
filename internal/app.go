@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"time"
 
 	"github.com/fsnotify/fsnotify"
 )
@@ -39,7 +40,15 @@ func NewApp(filename string) *App {
 				if !ok {
 					return
 				}
-				if event.Has(fsnotify.Write) {
+				if event.Has(fsnotify.Rename) || event.Has(fsnotify.Remove) {
+					time.Sleep(1 * time.Second)
+					err = watcher.Add(a.filename)
+					if err != nil {
+						log.Fatalf("source file `%s` cannot be found", a.filename)
+					}
+					log.Println("modified file:", event.Name)
+					a.loadSource()
+				} else if event.Has(fsnotify.Write) {
 					log.Println("modified file:", event.Name)
 					a.loadSource()
 				}
@@ -93,7 +102,7 @@ func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	authorized := true
+	authorized := payload.Credentials == nil && payload.Bearer == nil
 	if payload.Credentials != nil {
 		authorized = security.CredentialsAuthorized(r, payload.Credentials)
 	}
