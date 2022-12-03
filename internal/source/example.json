@@ -1,0 +1,23 @@
+{
+  "host": "127.0.0.1",
+  "base": "/baas",
+  "port": 8080,
+  "timeout": 30,
+  "api": {
+    "/c": {
+      "GET": {
+        "bearer": {
+          "roles": ["ORG_ADMIN"]
+        },
+        "_credentials": {
+          "joe": "password"
+        },
+        "status_code": 200,
+        "data": {"message":"Hello, World"},
+        "Headers": {
+          "Content-Type": "application/json"
+        }
+      }
+    }
+  }
+}

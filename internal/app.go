@@ -48,9 +48,11 @@ func NewApp(filename string) *App {
 					}
 					log.Println("modified file:", event.Name)
 					a.loadSource()
+					a.source.Audit()
 				} else if event.Has(fsnotify.Write) {
 					log.Println("modified file:", event.Name)
 					a.loadSource()
+					a.source.Audit()
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -84,12 +86,13 @@ func (a *App) loadSource() {
 	}
 
 	source.ApplyDefaults()
+	source.Cleanse()
 	a.source = &source
 }
 
 func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	path := r.URL.Path[len(a.source.Base):]
-	m, ok := a.source.Api[path]
+	m, ok := a.source.APIs[path]
 	if !ok {
 		w.WriteHeader(http.StatusNotFound)
 		a.auditLog(r.Method, path, "Not found")
@@ -136,8 +139,9 @@ func (a *App) auditLog(method, path, status string) {
 func (a *App) Serve() {
 	listenAddress := fmt.Sprintf("%s:%d", a.source.Host, a.source.Port)
 	mux := http.NewServeMux()
-	mux.Handle(a.source.Base+"/", a)
+	mux.Handle(a.source.Base, a)
 	log.Printf("Starting server: %s%s\n", listenAddress, a.source.Base)
+	a.source.Audit()
 	err := http.ListenAndServe(listenAddress, mux)
 	if err != nil {
 		log.Fatalf("unable to start server: %v", err)
