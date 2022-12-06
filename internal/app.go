@@ -3,7 +3,7 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
-	"jrest/internal/handlers"
+	"jrest/internal/handlers/routing"
 	"jrest/internal/models"
 	"log"
 	"net/http"
@@ -91,7 +91,7 @@ func (a *App) loadSource() {
 func (a *App) Serve() {
 	listenAddress := fmt.Sprintf("%s:%d", a.source.Host, a.source.Port)
 	mux := http.NewServeMux()
-	mux.Handle("/", handlers.BaseHandler(a.source))
+	mux.Handle("/", routing.BaseHandler(a.source))
 
 	//mux.Handle(a.source.Base, a)
 	log.Printf("Starting server: %s%s\n", listenAddress, a.source.Base)

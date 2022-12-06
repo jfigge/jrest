@@ -1,7 +1,8 @@
-package handlers
+package authentication
 
 import (
 	"context"
+	"jrest/internal/handlers"
 	"jrest/internal/security"
 	"net/http"
 )
@@ -12,14 +13,14 @@ func CredentialsHandler(claims security.Claims, next http.Handler) http.Handler 
 		authorized, credentialClaims := security.CredentialsAuthorized(r, claims)
 		if !authorized {
 			w.WriteHeader(http.StatusUnauthorized)
-			path := ctx.Value(Path).(string)
-			AuditLog(r.Method, path, "Not authorized")
+			path := ctx.Value(handlers.Path).(string)
+			handlers.AuditLog(r.Method, path, "Not authorized")
 			return
 		}
-		attr := ctx.Value(Attributes).(map[string]interface{})
-		attr[AttrAuth] = true
-		attr[AttrUser] = credentialClaims
-		ctx = context.WithValue(ctx, Authorized, true)
+		attr := ctx.Value(handlers.Attributes).(map[string]interface{})
+		attr[handlers.AttrAuth] = true
+		attr[handlers.AttrUser] = credentialClaims
+		ctx = context.WithValue(ctx, handlers.Authorized, true)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
