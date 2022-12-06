@@ -3,8 +3,8 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"jrest/internal/handlers"
 	"jrest/internal/models"
-	"jrest/internal/security"
 	"log"
 	"net/http"
 	"os"
@@ -29,6 +29,7 @@ func NewApp(filename string) *App {
 	app := App{
 		filename: filename,
 		watcher:  watcher,
+		source:   &models.Source{},
 	}
 	app.loadSource()
 
@@ -78,68 +79,21 @@ func (a *App) loadSource() {
 		log.Fatalf("unable to read %s: %v\n", a.filename, err)
 	}
 
-	source := models.Source{}
-
-	err = json.Unmarshal(bs, &source)
+	err = json.Unmarshal(bs, a.source)
 	if err != nil {
 		log.Fatalf("unable to process %s: %v", a.filename, err)
 	}
 
-	source.ApplyDefaults()
-	source.Cleanse()
-	a.source = &source
-}
-
-func (a *App) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := r.URL.Path[len(a.source.Base):]
-	m, ok := a.source.APIs[path]
-	if !ok {
-		w.WriteHeader(http.StatusNotFound)
-		a.auditLog(r.Method, path, "Not found")
-		return
-	}
-	payload, ok := m[r.Method]
-	if !ok {
-		w.WriteHeader(http.StatusMethodNotAllowed)
-		a.auditLog(r.Method, path, "Method not allowed")
-		return
-	}
-
-	authorized := payload.Credentials == nil && payload.Bearer == nil
-	if payload.Credentials != nil {
-		authorized = security.CredentialsAuthorized(r, payload.Credentials)
-	}
-	if !authorized && payload.Bearer != nil {
-		authorized = security.BearerAuthorized(r, payload.Bearer)
-	}
-	if !authorized {
-		w.WriteHeader(http.StatusUnauthorized)
-		a.auditLog(r.Method, path, "Not authorized")
-		return
-	}
-
-	for key, value := range payload.Headers {
-		w.Header().Set(key, value)
-	}
-
-	if payload.Status != 0 {
-		w.WriteHeader(payload.Status)
-		a.auditLog(r.Method, path, fmt.Sprintf("%d", payload.Status))
-	}
-	_, _ = w.Write(payload.Data)
-	if payload.Status == 0 {
-		a.auditLog(r.Method, path, "200")
-	}
-}
-
-func (a *App) auditLog(method, path, status string) {
-	log.Printf("Serving: %s:%s -> %s\n", method, path, status)
+	a.source.ApplyDefaults()
+	a.source.Cleanse()
 }
 
 func (a *App) Serve() {
 	listenAddress := fmt.Sprintf("%s:%d", a.source.Host, a.source.Port)
 	mux := http.NewServeMux()
-	mux.Handle(a.source.Base, a)
+	mux.Handle("/", handlers.BaseHandler(a.source))
+
+	//mux.Handle(a.source.Base, a)
 	log.Printf("Starting server: %s%s\n", listenAddress, a.source.Base)
 	a.source.Audit()
 	err := http.ListenAndServe(listenAddress, mux)

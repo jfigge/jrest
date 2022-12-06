@@ -1,21 +1,46 @@
 {
   "host": "127.0.0.1",
-  "base": "/baas",
+  "base": "baas",
   "port": 8080,
   "timeout": 30,
-  "api": {
-    "/c": {
-      "GET": {
+  "auth": {
+    "credentials": {
+      "jason": "figge"
+    }
+  },
+  "paths": {
+    "a": {
+      "auth": {
+        "credentials": {
+          "jason": "figge"
+        }
+      },
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": {"data": "Hello, World"}
+        },
+        "POST": {
+          "status_code": 201,
+          "content": {"message": "Hello, World"}
+        }
+      }
+    },
+    "c": {
+      "auth": {
         "bearer": {
-          "roles": ["ORG_ADMIN"]
-        },
-        "_credentials": {
-          "joe": "password"
-        },
-        "status_code": 200,
-        "data": {"message":"Hello, World"},
-        "Headers": {
-          "Content-Type": "application/json"
+          "roles": [
+            "ORG_ADMIN"
+          ]
+        }
+      },
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": {"message": "Hello, World"},
+          "Headers": {
+            "Content-Type": "application/json"
+          }
         }
       }
     }

@@ -9,22 +9,33 @@ import (
 	"strings"
 )
 
-type Methods map[string]response
+type Paths map[string]*Path
+type Methods map[string]*Response
 
-type response struct {
-	Bearer      security.Claims   `json:"bearer,omitempty"`
-	Credentials security.Claims   `json:"credentials,omitempty"`
-	Status      int               `json:"status_code"`
-	Data        json.RawMessage   `json:"data"`
-	Headers     map[string]string `json:"headers,omitempty"`
+type Response struct {
+	Authentication *Authentication   `json:"auth"`
+	Status         int               `json:"status_code"`
+	Content        json.RawMessage   `json:"content"`
+	Headers        map[string]string `json:"headers,omitempty"`
+}
+
+type Authentication struct {
+	Bearer      security.Claims `json:"bearer,omitempty"`
+	Credentials security.Claims `json:"credentials,omitempty"`
+}
+
+type Path struct {
+	Authentication *Authentication `json:"auth"`
+	Methods        Methods         `json:"methods,omitempty"`
 }
 
 type Source struct {
-	Host    string             `json:"host" default:"127.0.0.1"`
-	Base    string             `json:"base" default:"/"`
-	Port    int                `json:"port" default:"8080"`
-	Timeout int                `json:"timeout" default:"30"`
-	APIs    map[string]Methods `json:"api,omitempty"`
+	Host           string          `json:"host" default:"127.0.0.1"`
+	Base           string          `json:"base" default:"/"`
+	Port           int             `json:"port" default:"8080"`
+	Timeout        int             `json:"timeout" default:"30"`
+	Authentication *Authentication `json:"auth"`
+	Paths          Paths           `json:"paths,omitempty"`
 }
 
 func (s *Source) ApplyDefaults() {
@@ -55,23 +66,23 @@ func (s *Source) Cleanse() {
 	if !strings.HasPrefix(s.Base, "/") {
 		s.Base = fmt.Sprintf("/%s", s.Base)
 	}
-	if !strings.HasSuffix(s.Base, "/") {
-		s.Base = fmt.Sprintf("%s/", s.Base)
+	if strings.HasSuffix(s.Base, "/") {
+		s.Base = s.Base[:len(s.Base)-1]
 	}
 
 	// strip slashes from base of paths
-	for key, value := range s.APIs {
+	for key, api := range s.Paths {
 		if strings.HasPrefix(key, "/") {
-			delete(s.APIs, key)
-			s.APIs[key[1:]] = value
+			delete(s.Paths, key)
+			s.Paths[key[1:]] = api
 		}
 	}
 }
 
 func (s *Source) Audit() {
 	fmt.Println("Supported APIs:")
-	for key, methods := range s.APIs {
-		for method, _ := range methods {
+	for key, api := range s.Paths {
+		for method := range api.Methods {
 			fmt.Printf("  %s: %s\n", method, key)
 		}
 	}

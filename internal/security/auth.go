@@ -157,31 +157,31 @@ func extractCredentials(credentials string) (map[string]interface{}, error) {
 	return claims, nil
 }
 
-func BearerAuthorized(r *http.Request, checks Claims) bool {
+func BearerAuthorized(r *http.Request, checks Claims) (bool, Claims) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" || !strings.HasPrefix(auth, "Bearer ") {
-		return false
+		return false, Claims{}
 	}
 	claims, err := verifyToken(auth[7:])
 	if err != nil {
-		return false
+		return false, Claims{}
 	}
 
-	return validate(checks, claims)
+	return validate(checks, claims), claims
 }
 
-func CredentialsAuthorized(r *http.Request, checks Claims) bool {
+func CredentialsAuthorized(r *http.Request, checks Claims) (bool, Claims) {
 	auth := r.Header.Get("Authorization")
 	if auth == "" || !strings.HasPrefix(auth, "Basic ") {
-		return false
+		return false, Claims{}
 	}
 
 	claims, err := extractCredentials(auth[6:])
 	if err != nil {
-		return false
+		return false, Claims{}
 	}
 
-	return validate(checks, claims)
+	return validate(checks, claims), claims
 }
 
 func validate(checks Claims, claims Claims) bool {
