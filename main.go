@@ -28,7 +28,7 @@ func main() {
 		fmt.Println("with either a yaml or json extension will be served, but this can be replaced with any file name")
 		fmt.Printf("Usage: %s source.json\n", os.Args[0])
 		fmt.Println("      --help prints this message")
-		fmt.Println("      --example creates an example file source.yaml")
+		fmt.Println("      --example creates an example file sourcex.yaml")
 	} else if filename == "--example" || filename == "-e" {
 		err := os.WriteFile("example.yaml", []byte(example), 0644)
 		if err != nil {

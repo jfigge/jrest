@@ -1,6 +1,7 @@
 package models
 
 import (
+	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-memdb"
 	"gopkg.in/yaml.v3"
@@ -145,6 +146,20 @@ func (e *Entity) UnmarshalYAML(value *yaml.Node) error {
 	for index := 0; index < len(value.Content); index += 2 {
 		name := value.Content[index].Value
 		d := DataTypeOf(value.Content[index+1].Value)
+		(*e)[name] = d
+	}
+	return nil
+}
+
+func (e *Entity) UnmarshalJSON(data []byte) error {
+	tmp := make(map[string]string)
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	*e = make(Entity)
+	for name, value := range tmp {
+		d := DataTypeOf(value)
 		(*e)[name] = d
 	}
 	return nil
