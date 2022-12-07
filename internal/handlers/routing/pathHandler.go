@@ -11,14 +11,14 @@ func PathHandler(paths models.Paths) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		path := ctx.Value(handlers.Path).(string)
-		api, ok := paths[path]
+		body, ok := paths[path]
 		if !ok {
 			w.WriteHeader(http.StatusNotFound)
 			handlers.AuditLog(r.Method, path, "Not found")
 			return
 		}
-		auth := api.Authentication
-		next := MethodHandler(api.Methods)
+		auth := body.Authentication
+		next := MethodHandler(body.Methods)
 		r = r.WithContext(ctx)
 		if auth != nil {
 			auth2.AuthHandler(auth, next).ServeHTTP(w, r)

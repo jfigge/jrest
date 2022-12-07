@@ -8,9 +8,15 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/fsnotify/fsnotify"
+	"gopkg.in/yaml.v3"
+)
+
+var (
+	extensions = []string{"", ".yaml", ".yml", ".json"}
 )
 
 type App struct {
@@ -49,11 +55,11 @@ func NewApp(filename string) *App {
 					}
 					log.Println("modified file:", event.Name)
 					a.loadSource()
-					a.source.Audit()
+					a.source.LogPaths()
 				} else if event.Has(fsnotify.Write) {
 					log.Println("modified file:", event.Name)
 					a.loadSource()
-					a.source.Audit()
+					a.source.LogPaths()
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
@@ -65,7 +71,7 @@ func NewApp(filename string) *App {
 	}(&app)
 
 	// Add a path.
-	err = watcher.Add(filename)
+	err = watcher.Add(app.filename)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -74,12 +80,26 @@ func NewApp(filename string) *App {
 }
 
 func (a *App) loadSource() {
-	bs, err := os.ReadFile(a.filename)
+	var bs []byte
+	var err error
+	for _, extension := range extensions {
+		extendedFilename := fmt.Sprintf("%s%s", a.filename, extension)
+		bs, err = os.ReadFile(extendedFilename)
+		if err == nil {
+			a.filename = extendedFilename
+			break
+		}
+	}
 	if err != nil {
 		log.Fatalf("unable to read %s: %v\n", a.filename, err)
 	}
 
-	err = json.Unmarshal(bs, a.source)
+	switch filepath.Ext(a.filename)[1:] {
+	case "json":
+		err = json.Unmarshal(bs, a.source)
+	case "yml", "yaml":
+		err = yaml.Unmarshal(bs, a.source)
+	}
 	if err != nil {
 		log.Fatalf("unable to process %s: %v", a.filename, err)
 	}
@@ -93,9 +113,8 @@ func (a *App) Serve() {
 	mux := http.NewServeMux()
 	mux.Handle("/", routing.BaseHandler(a.source))
 
-	//mux.Handle(a.source.Base, a)
 	log.Printf("Starting server: %s%s\n", listenAddress, a.source.Base)
-	a.source.Audit()
+	a.source.LogPaths()
 	err := http.ListenAndServe(listenAddress, mux)
 	if err != nil {
 		log.Fatalf("unable to start server: %v", err)
