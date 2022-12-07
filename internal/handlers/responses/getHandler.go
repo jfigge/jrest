@@ -20,7 +20,7 @@ func getHandler(response *models.Response) http.Handler {
 			w.WriteHeader(response.Status)
 			handlers.AuditLog(r.Method, path, fmt.Sprintf("%d", response.Status))
 		}
-		_, _ = w.Write(append(response.Content, []byte("\n")...))
+		_, _ = w.Write(append([]byte(response.Content), []byte("\n")...))
 		if response.Status == 0 {
 			handlers.AuditLog(r.Method, path, "200")
 		}

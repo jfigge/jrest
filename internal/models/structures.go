@@ -15,29 +15,29 @@ type Paths map[string]*Path
 type Methods map[string]*Response
 
 type Response struct {
-	Authentication *Authentication   `json:"auth"`
-	Status         int               `json:"status_code"`
-	Content        json.RawMessage   `json:"content"`
-	Headers        map[string]string `json:"headers,omitempty"`
+	Authentication *Authentication   `json:"auth" yaml:"auth"`
+	Status         int               `json:"status_code" yaml:"status_code"`
+	Content        json.RawMessage   `json:"content" yaml:"content"`
+	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
 }
 
 type Authentication struct {
-	Bearer      security.Claims `json:"bearer,omitempty"`
-	Credentials security.Claims `json:"credentials,omitempty"`
+	Bearer      security.Claims `json:"bearer,omitempty" yaml:"bearer"`
+	Credentials security.Claims `json:"credentials,omitempty" yaml:"credentials"`
 }
 
 type Path struct {
-	Authentication *Authentication `json:"auth"`
-	Methods        Methods         `json:"methods,omitempty"`
+	Authentication *Authentication `json:"auth" yaml:"auth"`
+	Methods        Methods         `json:"methods" yaml:"methods"`
 }
 
 type Source struct {
-	Host           string          `json:"host" default:"127.0.0.1"`
-	Base           string          `json:"base" default:"/"`
-	Port           int             `json:"port" default:"8080"`
-	Timeout        int             `json:"timeout" default:"30"`
-	Authentication *Authentication `json:"auth"`
-	Paths          Paths           `json:"paths,omitempty"`
+	Host           string          `json:"host" yaml:"host" default:"127.0.0.1"`
+	Base           string          `json:"base" yaml:"base" default:"/"`
+	Port           int             `json:"port" yaml:"port" default:"8080"`
+	Timeout        int             `json:"timeout" yaml:"timeout" default:"30"`
+	Authentication *Authentication `json:"auth" yaml:"auth"`
+	Paths          Paths           `json:"paths" yaml:"paths"`
 	db             *memdb.MemDB
 }
 
@@ -74,19 +74,19 @@ func (s *Source) Cleanse() {
 	}
 
 	// strip slashes from base of paths
-	for key, api := range s.Paths {
-		if strings.HasPrefix(key, "/") {
-			delete(s.Paths, key)
-			s.Paths[key[1:]] = api
+	for path, body := range s.Paths {
+		if strings.HasPrefix(path, "/") {
+			delete(s.Paths, path)
+			s.Paths[path[1:]] = body
 		}
 	}
 }
 
-func (s *Source) Audit() {
-	fmt.Println("Supported APIs:")
-	for key, api := range s.Paths {
-		for method := range api.Methods {
-			fmt.Printf("  %s: %s\n", method, key)
+func (s *Source) LogPaths() {
+	fmt.Println("Supported paths:")
+	for path, body := range s.Paths {
+		for method := range body.Methods {
+			log.Printf("  %s: %s\n", method, path)
 		}
 	}
 }
