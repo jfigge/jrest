@@ -6,6 +6,7 @@ const (
 	Attributes = 1
 	Authorized = 2
 	Path       = 3
+	Store      = 4
 )
 
 const (

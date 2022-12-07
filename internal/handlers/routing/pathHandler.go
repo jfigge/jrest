@@ -19,11 +19,6 @@ func PathHandler(paths models.Paths) http.Handler {
 		}
 		auth := body.Authentication
 		next := MethodHandler(body.Methods)
-		r = r.WithContext(ctx)
-		if auth != nil {
-			auth2.AuthHandler(auth, next).ServeHTTP(w, r)
-		} else {
-			next.ServeHTTP(w, r)
-		}
+		auth2.AuthHandler(auth, next).ServeHTTP(w, r)
 	})
 }

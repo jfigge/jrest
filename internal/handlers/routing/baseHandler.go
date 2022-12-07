@@ -16,20 +16,21 @@ func BaseHandler(source *models.Source) http.Handler {
 			handlers.AuditLog(r.Method, r.URL.Path, "Not found")
 			return
 		}
-		ctx := r.Context()
 		path := r.URL.Path[len(source.Base)+1:]
 		attr := make(map[string]interface{})
 		attr[handlers.AttrBase] = source.Base
 		attr[handlers.AttrPath] = path
+
+		ctx := r.Context()
 		ctx = context.WithValue(ctx, handlers.Attributes, attr)
 		ctx = context.WithValue(ctx, handlers.Path, path)
-		auth := source.Authentication
-		r = r.WithContext(ctx)
-		next := PathHandler(source.Paths)
-		if auth != nil {
-			auth2.AuthHandler(auth, next).ServeHTTP(w, r)
-		} else {
-			next.ServeHTTP(w, r)
+		if source.DB != nil {
+			ctx = context.WithValue(ctx, handlers.Store, source.DB)
 		}
+
+		auth := source.Authentication
+		next := PathHandler(source.Paths)
+		r = r.WithContext(ctx)
+		auth2.AuthHandler(auth, next).ServeHTTP(w, r)
 	})
 }

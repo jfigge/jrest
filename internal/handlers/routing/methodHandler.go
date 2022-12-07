@@ -22,10 +22,6 @@ func MethodHandler(methods models.Methods) http.Handler {
 		attr[handlers.AttrMethod] = r.Method
 		auth := response.Authentication
 		next := responses.ResponseHandler(response)
-		if auth != nil {
-			auth2.AuthHandler(auth, next).ServeHTTP(w, r)
-		} else {
-			next.ServeHTTP(w, r)
-		}
+		auth2.AuthHandler(auth, next).ServeHTTP(w, r)
 	})
 }

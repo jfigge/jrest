@@ -1,7 +1,6 @@
 package models
 
 import (
-	"encoding/json"
 	"fmt"
 	"github.com/hashicorp/go-memdb"
 	"jrest/internal/security"
@@ -17,7 +16,7 @@ type Methods map[string]*Response
 type Response struct {
 	Authentication *Authentication   `json:"auth" yaml:"auth"`
 	Status         int               `json:"status_code" yaml:"status_code"`
-	Content        json.RawMessage   `json:"content" yaml:"content"`
+	Content        string            `json:"content" yaml:"content"`
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
 }
 
@@ -38,7 +37,7 @@ type Source struct {
 	Timeout        int             `json:"timeout" yaml:"timeout" default:"30"`
 	Authentication *Authentication `json:"auth" yaml:"auth"`
 	Paths          Paths           `json:"paths" yaml:"paths"`
-	db             *memdb.MemDB
+	DB             *memdb.MemDB
 }
 
 func (s *Source) ApplyDefaults() {
@@ -95,22 +94,22 @@ func (s *Source) ConfigureMemDB() {
 
 	// Create a new database
 	var err error
-	s.db, err = memdb.NewMemDB(schema)
+	s.DB, err = memdb.NewMemDB(schema)
 	if err != nil {
 		log.Fatalf("Unable to start database: %v", err)
 		return
 	}
 
-	// Create a write transaction
-	txn := s.db.Txn(true)
+	// Create a writeable transaction
+	txn := s.DB.Txn(true)
 	defer txn.Abort()
 
 	// Insert some people
 	people := []*Person{
-		&Person{"joe@aol.com", "Joe", 30},
-		&Person{"lucy@aol.com", "Lucy", 35},
-		&Person{"tariq@aol.com", "Tariq", 21},
-		&Person{"dorothy@aol.com", "Dorothy", 53},
+		{"joe@aol.com", "Joe", 30},
+		{"lucy@aol.com", "Lucy", 35},
+		{"tariq@aol.com", "Tariq", 21},
+		{"dorothy@aol.com", "Dorothy", 53},
 	}
 	for _, p := range people {
 		if err = txn.Insert("person", p); err != nil {
@@ -122,7 +121,7 @@ func (s *Source) ConfigureMemDB() {
 	txn.Commit()
 
 	// Create read-only transaction
-	txn = s.db.Txn(false)
+	txn = s.DB.Txn(false)
 	defer txn.Abort()
 
 	// Lookup by email

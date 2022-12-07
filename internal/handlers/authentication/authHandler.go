@@ -10,7 +10,7 @@ import (
 func AuthHandler(auth *models.Authentication, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
-		if ctx.Value(handlers.Authorized) == nil {
+		if auth != nil && ctx.Value(handlers.Authorized) == nil {
 			if auth.Bearer != nil {
 				BearerHandler(auth.Bearer, next).ServeHTTP(w, r.WithContext(ctx))
 				return
@@ -20,7 +20,7 @@ func AuthHandler(auth *models.Authentication, next http.Handler) http.Handler {
 			} else {
 				attr := ctx.Value(handlers.Attributes).(map[string]interface{})
 				attr[handlers.AttrAuth] = true
-				ctx = context.WithValue(ctx, handlers.Authorized, true)
+				r = r.WithContext(context.WithValue(ctx, handlers.Authorized, true))
 			}
 		}
 		next.ServeHTTP(w, r)

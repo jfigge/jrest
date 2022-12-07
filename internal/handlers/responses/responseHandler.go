@@ -10,7 +10,6 @@ func ResponseHandler(response *models.Response) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		path := ctx.Value(handlers.Path).(string)
-		//attr := ctx.Value(handlers.Attributes).(map[string]interface{})
 		switch r.Method {
 		case http.MethodGet:
 			getHandler(response).ServeHTTP(w, r)

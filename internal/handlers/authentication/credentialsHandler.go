@@ -21,6 +21,7 @@ func CredentialsHandler(claims security.Claims, next http.Handler) http.Handler 
 		attr[handlers.AttrAuth] = true
 		attr[handlers.AttrUser] = credentialClaims
 		ctx = context.WithValue(ctx, handlers.Authorized, true)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		r = r.WithContext(ctx)
+		next.ServeHTTP(w, r)
 	})
 }
