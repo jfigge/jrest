@@ -1,5 +1,6 @@
 .idea/
 jrest.iml
 jrest
-example.json
-source.json
+example.*
+source.*
+
