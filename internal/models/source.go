@@ -3,7 +3,9 @@ package models
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/hashicorp/go-memdb"
 	"jrest/internal/security"
+	"log"
 	"reflect"
 	"strconv"
 	"strings"
@@ -36,6 +38,7 @@ type Source struct {
 	Timeout        int             `json:"timeout" default:"30"`
 	Authentication *Authentication `json:"auth"`
 	Paths          Paths           `json:"paths,omitempty"`
+	db             *memdb.MemDB
 }
 
 func (s *Source) ApplyDefaults() {
@@ -85,6 +88,77 @@ func (s *Source) Audit() {
 		for method := range api.Methods {
 			fmt.Printf("  %s: %s\n", method, key)
 		}
+	}
+}
+
+func (s *Source) ConfigureMemDB() {
+
+	// Create a new database
+	var err error
+	s.db, err = memdb.NewMemDB(schema)
+	if err != nil {
+		log.Fatalf("Unable to start database: %v", err)
+		return
+	}
+
+	// Create a write transaction
+	txn := s.db.Txn(true)
+	defer txn.Abort()
+
+	// Insert some people
+	people := []*Person{
+		&Person{"joe@aol.com", "Joe", 30},
+		&Person{"lucy@aol.com", "Lucy", 35},
+		&Person{"tariq@aol.com", "Tariq", 21},
+		&Person{"dorothy@aol.com", "Dorothy", 53},
+	}
+	for _, p := range people {
+		if err = txn.Insert("person", p); err != nil {
+			panic(err)
+		}
+	}
+
+	// Commit the transaction
+	txn.Commit()
+
+	// Create read-only transaction
+	txn = s.db.Txn(false)
+	defer txn.Abort()
+
+	// Lookup by email
+	raw, err := txn.First("person", "id", "joe@aol.com")
+	if err != nil {
+		panic(err)
+	}
+
+	// Say hi!
+	fmt.Printf("Hello %s!\n", raw.(*Person).Name)
+
+	// List all the people
+	it, err := txn.Get("person", "id")
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("All the people:")
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		p := obj.(*Person)
+		fmt.Printf("  %s\n", p.Name)
+	}
+
+	// Range scan over people with ages between 25 and 35 inclusive
+	it, err = txn.LowerBound("person", "age", 25)
+	if err != nil {
+		panic(err)
+	}
+
+	fmt.Println("People aged 25 - 35:")
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		p := obj.(*Person)
+		if p.Age > 35 {
+			break
+		}
+		fmt.Printf("  %s is aged %d\n", p.Name, p.Age)
 	}
 }
 

@@ -79,6 +79,7 @@ func (a *App) loadSource() {
 		log.Fatalf("unable to read %s: %v\n", a.filename, err)
 	}
 
+	a.source.Paths = make(models.Paths)
 	err = json.Unmarshal(bs, a.source)
 	if err != nil {
 		log.Fatalf("unable to process %s: %v", a.filename, err)
@@ -86,6 +87,7 @@ func (a *App) loadSource() {
 
 	a.source.ApplyDefaults()
 	a.source.Cleanse()
+	a.source.ConfigureMemDB()
 }
 
 func (a *App) Serve() {
