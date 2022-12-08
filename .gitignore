@@ -2,6 +2,6 @@
 certs/
 jrest.iml
 jrest
-example.*
+./example.*
 source.*
 
