@@ -9,9 +9,14 @@ import (
 	"strings"
 
 	"github.com/hashicorp/go-memdb"
+	"gopkg.in/yaml.v3"
 )
 
-type Paths map[string]*Path
+type Paths struct {
+	audit   []string
+	static  map[string]*Path
+	dynamic map[string]*Path
+}
 type Methods map[string]*Response
 type Schema map[string]interface{}
 
@@ -80,21 +85,11 @@ func (s *Source) Cleanse() {
 	if strings.HasSuffix(s.Base, "/") {
 		s.Base = s.Base[:len(s.Base)-1]
 	}
-
-	// strip slashes from base of paths
-	for path, body := range s.Paths {
-		if strings.HasPrefix(path, "/") {
-			delete(s.Paths, path)
-			s.Paths[path[1:]] = body
-		}
-	}
 }
 
 func (s *Source) LogPaths() {
-	for path, body := range s.Paths {
-		for method := range body.Methods {
-			log.Printf("  %-6s %s\n", fmt.Sprintf("%s:", method), path)
-		}
+	for _, api := range s.Paths.audit {
+		log.Printf("%s\n", api)
 	}
 }
 
@@ -177,6 +172,34 @@ func (s *Source) ConfigureMemDB() {
 			fmt.Printf("  %-8s%v\n", fmt.Sprintf("%s:", p["Name"]), p["Age"])
 		}
 	}
+}
+
+func (ps *Paths) MatchPath(path string) (*Path, bool) {
+	p, ok := ps.static[path]
+	return p, ok
+}
+
+func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
+	ps.audit = []string{}
+	ps.static = make(map[string]*Path)
+	ps.dynamic = make(map[string]*Path)
+	for index := 0; index < len(value.Content); index += 2 {
+		name := lower.String(value.Content[index].Value)
+		if strings.HasPrefix(name, "/") {
+			name = name[1:]
+		}
+		path := &Path{}
+		value.Content[index+1].Decode(path)
+		if strings.Contains(name, "{") {
+			ps.dynamic[name] = path
+		} else {
+			ps.static[name] = path
+		}
+		for method := range path.Methods {
+			ps.audit = append(ps.audit, fmt.Sprintf("  %-6s %s", fmt.Sprintf("%s:", method), name))
+		}
+	}
+	return nil
 }
 
 func atoi(val string) int {

@@ -14,10 +14,26 @@ paths:
     methods:
       GET:
         status_code: 200
-        content: '{"data": "Hello, World"}'
+        content: '{"data": "Hello, Worlda"}'
       POST:
         status_code: 201
-        content: '{"data": "Hello, World"}'
+        content: '{"data": "Hello, Worlda"}'
+  abc:
+    auth:
+      credentials:
+        jason: figge
+    methods:
+      GET:
+        status_code: 200
+        content: '{"data": "Hello, Worldc"}'
+  ab:
+    auth:
+      credentials:
+        jason: figge
+    methods:
+      GET:
+        status_code: 200
+        content: '{"data": "Hello, Worldb"}'
   a/{name}:
     methods:
       GET:
