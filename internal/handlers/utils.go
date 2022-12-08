@@ -10,11 +10,12 @@ const (
 )
 
 const (
-	AttrBase   = "base"
-	AttrPath   = "path"
-	AttrAuth   = "authorized"
-	AttrUser   = "user"
-	AttrMethod = "method"
+	AttrBase     = "base"
+	AttrPath     = "path"
+	AttrAuth     = "authorized"
+	AttrUser     = "user"
+	AttrMethod   = "method"
+	AttrPathArgs = "pathArgs"
 )
 
 func AuditLog(method, path, status string) {

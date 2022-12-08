@@ -14,29 +14,36 @@ paths:
     methods:
       GET:
         status_code: 200
-        content: '{"data": "Hello, Worlda"}'
-      POST:
-        status_code: 201
-        content: '{"data": "Hello, Worlda"}'
-  abc:
+        content: '{"data": "a}'
+  b/{email}:
     auth:
       credentials:
         jason: figge
     methods:
       GET:
         status_code: 200
-        content: '{"data": "Hello, Worldc"}'
-  ab:
+        content: '{"data": "b/${email}"}'
+  a/{email}/c:
     auth:
       credentials:
         jason: figge
     methods:
       GET:
         status_code: 200
-        content: '{"data": "Hello, Worldb"}'
+        content: '{"data": "  a/{email}/c"}'
+  a/{name}/c/{age}:
+    auth:
+      credentials:
+        jason: figge
+    methods:
+      GET:
+        status_code: 200
+        content: '{"data": "a/{name}/c/{age}"}'
   a/{name}:
     methods:
       GET:
+        status_code: 200
+        content: '{"data": "a/{name}"}'
         lookup: person
   c:
     methods:

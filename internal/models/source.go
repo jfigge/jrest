@@ -1,7 +1,9 @@
 package models
 
 import (
+	"context"
 	"fmt"
+	"jrest/internal/handlers"
 	"jrest/internal/security"
 	"log"
 	"reflect"
@@ -12,10 +14,15 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+type PathMeta struct {
+	parts     []string
+	arguments map[int]string
+	path      *Path
+}
 type Paths struct {
 	audit   []string
 	static  map[string]*Path
-	dynamic map[string]*Path
+	dynamic []*PathMeta
 }
 type Methods map[string]*Response
 type Schema map[string]interface{}
@@ -174,15 +181,43 @@ func (s *Source) ConfigureMemDB() {
 	}
 }
 
-func (ps *Paths) MatchPath(path string) (*Path, bool) {
+func (ps *Paths) MatchPath(ctx context.Context, path string) (*Path, bool) {
+	attr := ctx.Value(handlers.Attributes).(map[string]interface{})
 	p, ok := ps.static[path]
-	return p, ok
+	if ok {
+		attr[handlers.AttrPathArgs] = make(map[string]string)
+		return p, true
+	}
+
+	parts := strings.Split(path, "/")
+next:
+	for _, pathMeta := range ps.dynamic {
+		if len(pathMeta.parts) != len(parts) {
+			continue
+		}
+		arguments := make(map[string]string)
+		for index, part := range pathMeta.parts {
+			name, found := pathMeta.arguments[index]
+			if found {
+				arguments[name] = parts[index]
+				continue
+			}
+			if !strings.EqualFold(part, parts[index]) {
+				continue next
+			}
+		}
+		// matched
+		attr[handlers.AttrPathArgs] = arguments
+		return pathMeta.path, true
+	}
+	// check dynamic content
+	return nil, false
 }
 
 func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
 	ps.audit = []string{}
 	ps.static = make(map[string]*Path)
-	ps.dynamic = make(map[string]*Path)
+	ps.dynamic = make([]*PathMeta, 0)
 	for index := 0; index < len(value.Content); index += 2 {
 		name := lower.String(value.Content[index].Value)
 		if strings.HasPrefix(name, "/") {
@@ -191,7 +226,7 @@ func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
 		path := &Path{}
 		value.Content[index+1].Decode(path)
 		if strings.Contains(name, "{") {
-			ps.dynamic[name] = path
+			ps.dynamic = append(ps.dynamic, newPathMeta(name, path))
 		} else {
 			ps.static[name] = path
 		}
@@ -200,6 +235,21 @@ func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
 		}
 	}
 	return nil
+}
+
+func newPathMeta(name string, path *Path) *PathMeta {
+	meta := &PathMeta{
+		parts:     strings.Split(name, "/"),
+		arguments: make(map[int]string),
+		path:      path,
+	}
+	for index, part := range meta.parts {
+		if strings.HasPrefix(part, "{") && strings.HasSuffix(part, "}") {
+			meta.arguments[index] = part[1 : len(part)-1]
+		}
+	}
+
+	return meta
 }
 
 func atoi(val string) int {

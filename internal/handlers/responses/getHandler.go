@@ -11,7 +11,9 @@ func getHandler(response *models.Response) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		ctx := r.Context()
 		path := ctx.Value(handlers.Path).(string)
-		//attr := ctx.Value(handlers.Attributes).(map[string]interface{})
+		attr := ctx.Value(handlers.Attributes).(map[string]interface{})
+		args := attr[handlers.AttrPathArgs].(map[string]string)
+		fmt.Printf("%v\n", args)
 		for key, value := range response.Headers {
 			w.Header().Set(key, value)
 		}
