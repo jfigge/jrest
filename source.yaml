@@ -1,0 +1,52 @@
+host: 127.0.0.1
+base: baas
+port: 8080
+timeout: 30
+auth: {}
+paths:
+  a:
+    auth:
+      credentials:
+        jason: figge
+    methods:
+      GET:
+        status_code: 200
+        content: '{"data": "Hello, World"}'
+      POST:
+        status_code: 201
+        content: '{"data": "Hello, World"}'
+  c:
+    methods:
+      GET:
+        auth:
+          bearer:
+            roles:
+              - ORG_ADMIN
+        status_code: 200
+        content: '{"data": "Hello, World"}'
+        Headers:
+          Content-Type: application/json
+storage:
+  entities:
+    person:
+      fields:
+        name: String
+        email: String
+        age: Int
+      indexes:
+        - name: id
+          fields:
+            - Email
+          unique: true
+        - name: age
+          fields:
+            - Age
+  data:
+    person:
+      - name: jason
+        email: jason.figge@gmail.com
+        age: 50
+      - name: lauren
+        email: lauren.figge@gmail.com
+        age: 48
+  schema:
