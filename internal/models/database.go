@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"jrest/internal/models/enums/datatype"
+	"log"
 	"reflect"
 
 	"github.com/hashicorp/go-memdb"
@@ -13,79 +14,96 @@ import (
 )
 
 var (
+	lowerCase = cases.Lower(language.Und)
 	titleCase = cases.Title(language.Und)
 )
 
 type Data map[string]interface{}
 type Fields map[string]datatype.DataType
-type Entities map[string]Entity
+type Entities map[string]*Entity
+
+type Index struct {
+	Name   string   `json:"name" yaml:"name"`
+	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
+	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
+}
 type Entity struct {
+	Table   Table   `json:"fields" yaml:"fields"`
+	Indexes []Index `json:"indexes" yaml:"indexes"`
+}
+type Table struct {
 	structType reflect.Type
 	fields     Fields
 }
-
 type Store struct {
 	Entities Entities          `json:"entities" yaml:"entities"`
 	Data     map[string][]Data `json:"data,omitempty" yaml:"data,omitempty"`
-	Schema   Schema            `json:"schema" yaml:"schema"`
+	schema   *memdb.DBSchema
 }
 
-// Create the DB schema
-var (
-	schema = &memdb.DBSchema{
-		Tables: map[string]*memdb.TableSchema{
-			"person": &memdb.TableSchema{
-				Name: "person",
-				Indexes: map[string]*memdb.IndexSchema{
-					"id": &memdb.IndexSchema{
-						Name:    "id",
-						Unique:  true,
-						Indexer: &memdb.StringFieldIndex{Field: "Email"},
-					},
-					"age": &memdb.IndexSchema{
-						Name:    "age",
-						Unique:  false,
-						Indexer: &memdb.IntFieldIndex{Field: "Age"},
-					},
-				},
-			},
-		},
+func (s *Store) Schema() *memdb.DBSchema {
+	if s.schema == nil {
+		tables := make(map[string]*memdb.TableSchema)
+		for entityName, definition := range s.Entities {
+			table := memdb.TableSchema{
+				Name: entityName,
+			}
+			indexes := make(map[string]*memdb.IndexSchema)
+			for _, content := range definition.Indexes {
+				index := memdb.IndexSchema{
+					Name:   lowerCase.String(content.Name),
+					Unique: content.Unique,
+				}
+				if len(content.Fields) > 0 {
+					index.Indexer = &memdb.StringFieldIndex{Field: titleCase.String(content.Fields[0])}
+				} else {
+					index.Indexer = &memdb.StringFieldIndex{Field: titleCase.String(content.Name)}
+				}
+				indexes[content.Name] = &index
+			}
+			table.Indexes = indexes
+			tables[entityName] = &table
+		}
+		s.schema = &memdb.DBSchema{
+			Tables: tables,
+		}
 	}
-)
+	return s.schema
+}
 
-func (e *Entity) UnmarshalYAML(value *yaml.Node) error {
-	*e = Entity{
+func (t *Table) UnmarshalYAML(value *yaml.Node) error {
+	*t = Table{
 		fields: make(Fields),
 	}
 	for index := 0; index < len(value.Content); index += 2 {
 		name := value.Content[index].Value
 		d := datatype.DataTypeOf(value.Content[index+1].Value)
-		e.fields[name] = d
+		t.fields[name] = d
 	}
-	e.mapToStruct()
+	t.mapToStruct()
 	return nil
 }
 
-func (e *Entity) UnmarshalJSON(data []byte) error {
+func (t *Table) UnmarshalJSON(data []byte) error {
 	tmp := make(map[string]string)
 	err := json.Unmarshal(data, &tmp)
 	if err != nil {
 		return err
 	}
-	*e = Entity{
+	*t = Table{
 		fields: make(map[string]datatype.DataType),
 	}
 	for name, value := range tmp {
 		d := datatype.DataTypeOf(value)
-		e.fields[name] = d
+		t.fields[name] = d
 	}
 	return nil
 }
 
-func (e *Entity) mapToStruct() {
+func (t *Table) mapToStruct() {
 	var structFields []reflect.StructField
 
-	for k, v := range e.fields {
+	for k, v := range t.fields {
 		sf := reflect.StructField{
 			Name: titleCase.String(k),
 		}
@@ -101,15 +119,14 @@ func (e *Entity) mapToStruct() {
 	}
 
 	// Creates the struct type
-	e.structType = reflect.StructOf(structFields)
+	t.structType = reflect.StructOf(structFields)
 }
 
-func (e *Entity) getInstance() reflect.Value {
-	return reflect.New(e.structType)
+func (t *Table) getInstance() reflect.Value {
+	return reflect.New(t.structType)
 }
 
-func (e *Entity) setValues(s reflect.Value, row Data) reflect.Value {
-	fmt.Println("\n---Setting struct fields...")
+func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 	for k, v := range row {
 		fv := s.Elem().FieldByName(titleCase.String(k))
 		switch x := v.(type) {
@@ -126,7 +143,7 @@ func (e *Entity) setValues(s reflect.Value, row Data) reflect.Value {
 	return s
 }
 
-func (e *Entity) toMap(s interface{}) map[string]interface{} {
+func (t *Table) toMap(s interface{}) map[string]interface{} {
 	modelReflect := reflect.ValueOf(s)
 	if modelReflect.Kind() == reflect.Ptr {
 		modelReflect = modelReflect.Elem()
@@ -135,23 +152,24 @@ func (e *Entity) toMap(s interface{}) map[string]interface{} {
 	var fieldData interface{}
 
 	m := make(map[string]interface{})
-	for i := 0; i < e.structType.NumField(); i++ {
+	for i := 0; i < t.structType.NumField(); i++ {
 		field := modelReflect.Field(i)
 
 		switch field.Kind() {
 		case reflect.Struct:
 			fallthrough
 		case reflect.Ptr:
-			fieldData = e.toMap(field)
+			log.Fatalf("Support for sub-structures has not been implemented: %v", field.String())
+			//fieldData = t.toMap(field)
 		default:
 			fieldData = field.Interface()
 		}
 
-		m[e.structType.Field(i).Name] = fieldData
+		m[t.structType.Field(i).Name] = fieldData
 	}
 	return m
 }
 
-func (e *Entity) Fields() Fields {
-	return e.fields
+func (t *Table) Fields() Fields {
+	return t.fields
 }
