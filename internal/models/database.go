@@ -20,12 +20,13 @@ var (
 
 type Data map[string]interface{}
 type Fields map[string]datatype.DataType
+
 type Entities map[string]*Entity
 
 type Index struct {
-	Name   string   `json:"name" yaml:"name"`
-	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
-	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
+	Name   string `json:"name" yaml:"name"`
+	Field  string `json:"field,omitempty" yaml:"field,omitempty"`
+	Unique bool   `json:"unique,omitempty" yaml:"unique,omitempty"`
 }
 type Entity struct {
 	Table   Table   `json:"fields" yaml:"fields"`
@@ -38,37 +39,28 @@ type Table struct {
 type Store struct {
 	Entities Entities          `json:"entities" yaml:"entities"`
 	Data     map[string][]Data `json:"data,omitempty" yaml:"data,omitempty"`
-	schema   *memdb.DBSchema
 }
 
-func (s *Store) Schema() *memdb.DBSchema {
-	if s.schema == nil {
-		tables := make(map[string]*memdb.TableSchema)
-		for entityName, definition := range s.Entities {
-			table := memdb.TableSchema{
-				Name: entityName,
-			}
-			indexes := make(map[string]*memdb.IndexSchema)
-			for _, content := range definition.Indexes {
-				index := memdb.IndexSchema{
-					Name:   lowerCase.String(content.Name),
-					Unique: content.Unique,
-				}
-				if len(content.Fields) > 0 {
-					index.Indexer = &memdb.StringFieldIndex{Field: titleCase.String(content.Fields[0])}
-				} else {
-					index.Indexer = &memdb.StringFieldIndex{Field: titleCase.String(content.Name)}
-				}
-				indexes[content.Name] = &index
-			}
-			table.Indexes = indexes
-			tables[entityName] = &table
+func (s *Store) buildSchema() *memdb.DBSchema {
+	tables := make(map[string]*memdb.TableSchema)
+	for entityName, definition := range s.Entities {
+		table := memdb.TableSchema{
+			Name: entityName,
 		}
-		s.schema = &memdb.DBSchema{
-			Tables: tables,
+		indexes := make(map[string]*memdb.IndexSchema)
+		for _, index := range definition.Indexes {
+			indexes[index.Name] = &memdb.IndexSchema{
+				Name:    lowerCase.String(index.Name),
+				Unique:  index.Unique,
+				Indexer: definition.Table.fields.Indexer(index),
+			}
 		}
+		table.Indexes = indexes
+		tables[entityName] = &table
 	}
-	return s.schema
+	return &memdb.DBSchema{
+		Tables: tables,
+	}
 }
 
 func (t *Table) UnmarshalYAML(value *yaml.Node) error {
@@ -112,8 +104,8 @@ func (t *Table) mapToStruct() {
 			sf.Type = reflect.TypeOf("")
 		case datatype.Int:
 			sf.Type = reflect.TypeOf(0)
-		case datatype.Float:
-			sf.Type = reflect.TypeOf(float64(0))
+		case datatype.Bool:
+			sf.Type = reflect.TypeOf(false)
 		}
 		structFields = append(structFields, sf)
 	}
@@ -136,6 +128,8 @@ func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 			fv.SetInt(int64(x))
 		case float64:
 			fv.SetFloat(x)
+		case bool:
+			fv.SetBool(x)
 		default:
 			fmt.Printf("%s\n", v)
 		}
@@ -172,4 +166,21 @@ func (t *Table) toMap(s interface{}) map[string]interface{} {
 
 func (t *Table) Fields() Fields {
 	return t.fields
+}
+
+func (f Fields) Indexer(index Index) memdb.Indexer {
+	d, ok := f[lowerCase.String(index.Field)]
+	if !ok {
+		log.Fatalf("unknown index field: %s", index.Name)
+		return nil
+	}
+	switch d {
+	case datatype.String:
+		return &memdb.StringFieldIndex{Field: index.Field}
+	case datatype.Int:
+		return &memdb.IntFieldIndex{Field: index.Field}
+	case datatype.Bool:
+		return &memdb.BoolFieldIndex{Field: index.Field}
+	}
+	return nil
 }

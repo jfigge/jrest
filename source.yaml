@@ -35,12 +35,10 @@ storage:
         age: Int
       indexes:
         - name: id
-          fields:
-            - Email
+          field: Email
           unique: true
         - name: age
-          fields:
-            - Age
+          field: Age
   data:
     person:
       - name: jason

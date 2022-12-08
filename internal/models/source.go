@@ -101,7 +101,7 @@ func (s *Source) ConfigureMemDB() {
 
 	// Create a new database
 	var err error
-	s.DB, err = memdb.NewMemDB(s.Storage.Schema())
+	s.DB, err = memdb.NewMemDB(s.Storage.buildSchema())
 	if err != nil {
 		log.Fatalf("Unable to start database: %v", err)
 		return
@@ -137,7 +137,8 @@ func (s *Source) ConfigureMemDB() {
 		defer txn.Abort()
 
 		// Lookup by email
-		raw, err := txn.First("person", "id", "jason.figge@gmail.com")
+		var raw interface{}
+		raw, err = txn.First("person", "id", "jason.figge@gmail.com")
 		if err != nil {
 			panic(err)
 		}
@@ -147,7 +148,8 @@ func (s *Source) ConfigureMemDB() {
 		fmt.Printf("Hello %v!\n", table.toMap(raw)["Name"])
 
 		// List all the people
-		it, err := txn.Get("person", "id")
+		var it memdb.ResultIterator
+		it, err = txn.Get("person", "id")
 		if err != nil {
 			panic(err)
 		}

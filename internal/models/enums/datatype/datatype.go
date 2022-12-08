@@ -12,12 +12,12 @@ type DataType int
 const (
 	String DataType = iota + 1 // EnumIndex = 1
 	Int                        // EnumIndex = 2
-	Float                      // EnumIndex = 3
+	Bool                       // EnumInded = 3
 )
 
 // String - Creating common behavior - give the type a String function
 func (d DataType) String() string {
-	return [...]string{"String", "Int", "Float"}[d-1]
+	return [...]string{"String", "Int", "Bool"}[d-1]
 }
 
 // EnumIndex - Creating common behavior - give the type a EnumIndex function
@@ -31,8 +31,9 @@ func DataTypeOf(value string) DataType {
 		return String
 	case "int":
 		return Int
-	case "float":
-		return Float
+	case "bool":
+		return Bool
 	}
+
 	panic(fmt.Sprintf("unknown value: %s", value))
 }
