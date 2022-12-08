@@ -114,18 +114,21 @@ func (a *App) Serve() {
 	mux := http.NewServeMux()
 	mux.Handle("/", routing.BaseHandler(a.source))
 
+	protocol := "http"
+	if a.source.TLS != nil {
+		protocol = "https"
+	}
+	log.Printf("Starting server: %s://%s%s\n", protocol, listenAddress, a.source.Base)
+	a.source.LogPaths()
+
 	var err error
 	if a.source.TLS != nil {
-		log.Printf("Starting server: https://%s%s\n", listenAddress, a.source.Base)
-		a.source.LogPaths()
 		err = http.ListenAndServeTLS(
 			listenAddress,
 			a.source.TLS.CertFile,
 			a.source.TLS.KeyFile,
 			mux)
 	} else {
-		log.Printf("Starting server: http://%s%s\n", listenAddress, a.source.Base)
-		a.source.LogPaths()
 		err = http.ListenAndServe(listenAddress, mux)
 	}
 	if err != nil {

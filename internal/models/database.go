@@ -14,8 +14,8 @@ import (
 )
 
 var (
-	lowerCase = cases.Lower(language.Und)
-	titleCase = cases.Title(language.Und)
+	lower = cases.Lower(language.Und)
+	title = cases.Title(language.Und)
 )
 
 type Data map[string]interface{}
@@ -24,9 +24,10 @@ type Fields map[string]datatype.DataType
 type Entities map[string]*Entity
 
 type Index struct {
-	Name   string `json:"name" yaml:"name"`
-	Field  string `json:"field,omitempty" yaml:"field,omitempty"`
-	Unique bool   `json:"unique,omitempty" yaml:"unique,omitempty"`
+	Name   string   `json:"name" yaml:"name"`
+	Field  string   `json:"field,omitempty" yaml:"field,omitempty"`
+	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
+	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
 }
 type Entity struct {
 	Table   Table   `json:"fields" yaml:"fields"`
@@ -49,8 +50,8 @@ func (s *Store) buildSchema() *memdb.DBSchema {
 		}
 		indexes := make(map[string]*memdb.IndexSchema)
 		for _, index := range definition.Indexes {
-			indexes[index.Name] = &memdb.IndexSchema{
-				Name:    lowerCase.String(index.Name),
+			indexes[lower.String(index.Name)] = &memdb.IndexSchema{
+				Name:    lower.String(index.Name),
 				Unique:  index.Unique,
 				Indexer: definition.Table.fields.Indexer(index),
 			}
@@ -68,7 +69,7 @@ func (t *Table) UnmarshalYAML(value *yaml.Node) error {
 		fields: make(Fields),
 	}
 	for index := 0; index < len(value.Content); index += 2 {
-		name := value.Content[index].Value
+		name := lower.String(value.Content[index].Value)
 		d := datatype.DataTypeOf(value.Content[index+1].Value)
 		t.fields[name] = d
 	}
@@ -87,7 +88,7 @@ func (t *Table) UnmarshalJSON(data []byte) error {
 	}
 	for name, value := range tmp {
 		d := datatype.DataTypeOf(value)
-		t.fields[name] = d
+		t.fields[lower.String(name)] = d
 	}
 	return nil
 }
@@ -97,7 +98,7 @@ func (t *Table) mapToStruct() {
 
 	for k, v := range t.fields {
 		sf := reflect.StructField{
-			Name: titleCase.String(k),
+			Name: title.String(k),
 		}
 		switch v {
 		case datatype.String:
@@ -120,7 +121,7 @@ func (t *Table) getInstance() reflect.Value {
 
 func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 	for k, v := range row {
-		fv := s.Elem().FieldByName(titleCase.String(k))
+		fv := s.Elem().FieldByName(title.String(k))
 		switch x := v.(type) {
 		case string:
 			fv.SetString(x)
@@ -169,18 +170,25 @@ func (t *Table) Fields() Fields {
 }
 
 func (f Fields) Indexer(index Index) memdb.Indexer {
-	d, ok := f[lowerCase.String(index.Field)]
+	fieldName := index.Name
+	if index.Field != "" {
+		fieldName = index.Field
+	} else if len(index.Fields) > 0 {
+		fieldName = index.Fields[0]
+	}
+	fieldName = title.String(fieldName)
+	d, ok := f[lower.String(fieldName)]
 	if !ok {
 		log.Fatalf("unknown index field: %s", index.Name)
 		return nil
 	}
 	switch d {
 	case datatype.String:
-		return &memdb.StringFieldIndex{Field: index.Field}
+		return &memdb.StringFieldIndex{Field: fieldName}
 	case datatype.Int:
-		return &memdb.IntFieldIndex{Field: index.Field}
+		return &memdb.IntFieldIndex{Field: fieldName}
 	case datatype.Bool:
-		return &memdb.BoolFieldIndex{Field: index.Field}
+		return &memdb.BoolFieldIndex{Field: fieldName}
 	}
 	return nil
 }

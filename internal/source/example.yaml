@@ -3,6 +3,9 @@ base: baas
 port: 8080
 timeout: 30
 auth: {}
+tls:
+  certFile: ./certs/tls.crt
+  keyFile: ./certs/tls.key
 paths:
   a:
     auth:
@@ -15,6 +18,10 @@ paths:
       POST:
         status_code: 201
         content: '{"data": "Hello, World"}'
+  a/{name}:
+    methods:
+      GET:
+        lookup: person
   c:
     methods:
       GET:
@@ -32,15 +39,12 @@ storage:
       fields:
         name: String
         email: String
-        age: Int
+        Age: Int
       indexes:
         - name: id
-          fields:
-            - Email
+          field: email
           unique: true
         - name: age
-          fields:
-            - Age
   data:
     person:
       - name: jason
