@@ -1,7 +1,10 @@
-host: 127.0.0.1
+host: jrest.test.com
 base: baas
 port: 8080
 timeout: 30
+tls:
+  certFile: ./certs/tls.crt
+  keyFile: ./certs/tls.key
 auth: {}
 paths:
   a:

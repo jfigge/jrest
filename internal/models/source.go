@@ -32,11 +32,17 @@ type Path struct {
 	Methods        Methods         `json:"methods" yaml:"methods"`
 }
 
+type Tls struct {
+	CertFile string `json:"certFile" yaml:"certFile"`
+	KeyFile  string `json:"keyFile" yaml:"keyFile"`
+}
+
 type Source struct {
 	Host           string          `json:"host" yaml:"host" default:"127.0.0.1"`
 	Base           string          `json:"base" yaml:"base" default:"/"`
 	Port           int             `json:"port" yaml:"port" default:"8080"`
 	Timeout        int             `json:"timeout" yaml:"timeout" default:"30"`
+	TLS            *Tls            `json:"tls,omitempty" yaml:"tls,omitempty"`
 	Authentication *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Paths          Paths           `json:"paths" yaml:"paths"`
 	Storage        *Store          `json:"storage,omitempty" yaml:"storage,omitempty"`
