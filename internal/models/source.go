@@ -31,7 +31,7 @@ type Schema map[string]interface{}
 type Response struct {
 	Authentication *Authentication   `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Status         int               `json:"status_code,omitempty" yaml:"status_code,omitempty"`
-	Content        string            `json:"content" yaml:"content"`
+	Content        *string           `json:"content" yaml:"content"`
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
 }
 
@@ -199,7 +199,7 @@ next:
 		for index, part := range pathMeta.parts {
 			name, found := pathMeta.arguments[index]
 			if found {
-				arguments[name] = parts[index]
+				arguments[fmt.Sprintf("{%s}", name)] = parts[index]
 				continue
 			}
 			if !strings.EqualFold(part, parts[index]) {

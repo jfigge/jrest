@@ -5,6 +5,7 @@ import (
 	"jrest/internal/handlers"
 	"jrest/internal/models"
 	"net/http"
+	"strings"
 )
 
 func getHandler(response *models.Response) http.Handler {
@@ -13,7 +14,7 @@ func getHandler(response *models.Response) http.Handler {
 		path := ctx.Value(handlers.Path).(string)
 		attr := ctx.Value(handlers.Attributes).(map[string]interface{})
 		args := attr[handlers.AttrPathArgs].(map[string]string)
-		fmt.Printf("%v\n", args)
+		fmt.Printf("%v\n", attr)
 		for key, value := range response.Headers {
 			w.Header().Set(key, value)
 		}
@@ -21,7 +22,16 @@ func getHandler(response *models.Response) http.Handler {
 			w.WriteHeader(response.Status)
 			handlers.AuditLog(r.Method, path, fmt.Sprintf("%d", response.Status))
 		}
-		_, _ = w.Write(append([]byte(response.Content), []byte("\n")...))
+
+		respData := ""
+		if response.Content != nil {
+			respData = *response.Content
+		}
+
+		for k, v := range args {
+			respData = strings.ReplaceAll(respData, k, v)
+		}
+		_, _ = w.Write(append([]byte(respData), []byte("\n")...))
 		if response.Status == 0 {
 			handlers.AuditLog(r.Method, path, "200")
 		}
