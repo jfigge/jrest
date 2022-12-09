@@ -2,6 +2,7 @@ package models
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"jrest/internal/handlers"
 	"jrest/internal/security"
@@ -101,7 +102,6 @@ func (s *Source) LogPaths() {
 }
 
 func (s *Source) ConfigureMemDB() {
-
 	if s.Storage == nil || len(s.Storage.Entities) == 0 {
 		s.DB = nil
 		return
@@ -225,16 +225,39 @@ func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
 		}
 		path := &Path{}
 		value.Content[index+1].Decode(path)
-		if strings.Contains(name, "{") {
-			ps.dynamic = append(ps.dynamic, newPathMeta(name, path))
-		} else {
-			ps.static[name] = path
-		}
-		for method := range path.Methods {
-			ps.audit = append(ps.audit, fmt.Sprintf("  %-6s %s", fmt.Sprintf("%s:", method), name))
-		}
+		ps.processPath(name, path)
 	}
 	return nil
+}
+
+func (ps *Paths) UnmarshalJSON(data []byte) error {
+	ps.audit = []string{}
+	ps.static = make(map[string]*Path)
+	ps.dynamic = make([]*PathMeta, 0)
+	tmp := make(map[string]*Path)
+	err := json.Unmarshal(data, &tmp)
+	if err != nil {
+		return err
+	}
+	for name, path := range tmp {
+		name = lower.String(name)
+		if strings.HasPrefix(name, "/") {
+			name = name[1:]
+		}
+		ps.processPath(name, path)
+	}
+	return nil
+}
+
+func (ps *Paths) processPath(name string, path *Path) {
+	if strings.Contains(name, "{") {
+		ps.dynamic = append(ps.dynamic, newPathMeta(name, path))
+	} else {
+		ps.static[name] = path
+	}
+	for method := range path.Methods {
+		ps.audit = append(ps.audit, fmt.Sprintf("  %-6s %s", fmt.Sprintf("%s:", method), name))
+	}
 }
 
 func newPathMeta(name string, path *Path) *PathMeta {
@@ -248,7 +271,6 @@ func newPathMeta(name string, path *Path) *PathMeta {
 			meta.arguments[index] = part[1 : len(part)-1]
 		}
 	}
-
 	return meta
 }
 

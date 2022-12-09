@@ -4,9 +4,10 @@
   "port": 8080,
   "timeout": 30,
   "auth": {
-    "credentials": {
-      "jason": "figge"
-    }
+  },
+  "tls": {
+    "certFile": "./certs/tls.crt",
+    "keyFile": "./certs/tls.key"
   },
   "paths": {
     "a": {
@@ -18,31 +19,110 @@
       "methods": {
         "GET": {
           "status_code": 200,
-          "content": {"data": "Hello, World"}
-        },
-        "POST": {
-          "status_code": 201,
-          "content": {"message": "Hello, World"}
+          "content": "{\"data\": \"a}"
         }
       }
     },
-    "c": {
+    "b/{email}": {
       "auth": {
-        "bearer": {
-          "roles": [
-            "ORG_ADMIN"
-          ]
+        "credentials": {
+          "jason": "figge"
         }
       },
       "methods": {
         "GET": {
           "status_code": 200,
-          "content": {"message": "Hello, World"},
+          "content": "{\"data\": \"b/${email}\"}"
+        }
+      }
+    },
+    "a/{email}/c": {
+      "auth": {
+        "credentials": {
+          "jason": "figge"
+        }
+      },
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": "{\"data\": \"  a/{email}/c\"}"
+        }
+      }
+    },
+    "a/{name}/c/{age}": {
+      "auth": {
+        "credentials": {
+          "jason": "figge"
+        }
+      },
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": "{\"data\": \"a/{name}/c/{age}\"}"
+        }
+      }
+    },
+    "a/{name}": {
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": "{\"data\": \"a/{name}\"}",
+          "lookup": "person"
+        }
+      }
+    },
+    "c": {
+      "methods": {
+        "GET": {
+          "auth": {
+            "bearer": {
+              "roles": [
+                "ORG_ADMIN"
+              ]
+            }
+          },
+          "status_code": 200,
+          "content": "{\"data\": \"Hello, World\"}",
           "Headers": {
             "Content-Type": "application/json"
           }
         }
       }
+    }
+  },
+  "storage": {
+    "entities": {
+      "person": {
+        "fields": {
+          "name": "String",
+          "email": "String",
+          "Age": "Int"
+        },
+        "indexes": [
+          {
+            "name": "id",
+            "field": "email",
+            "unique": true
+          },
+          {
+            "name": "age"
+          }
+        ]
+      }
+    },
+    "data": {
+      "person": [
+        {
+          "name": "jason",
+          "email": "jason.figge@gmail.com",
+          "age": 50
+        },
+        {
+          "name": "lauren",
+          "email": "lauren.figge@gmail.com",
+          "age": 48
+        }
+      ]
     }
   }
 }

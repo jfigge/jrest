@@ -90,6 +90,7 @@ func (t *Table) UnmarshalJSON(data []byte) error {
 		d := datatype.DataTypeOf(value)
 		t.fields[lower.String(name)] = d
 	}
+	t.mapToStruct()
 	return nil
 }
 
@@ -104,7 +105,7 @@ func (t *Table) mapToStruct() {
 		case datatype.String:
 			sf.Type = reflect.TypeOf("")
 		case datatype.Int:
-			sf.Type = reflect.TypeOf(0)
+			sf.Type = reflect.TypeOf(int64(0))
 		case datatype.Bool:
 			sf.Type = reflect.TypeOf(false)
 		}
@@ -121,16 +122,20 @@ func (t *Table) getInstance() reflect.Value {
 
 func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 	for k, v := range row {
+		d := t.fields[lower.String(k)]
 		fv := s.Elem().FieldByName(title.String(k))
-		switch x := v.(type) {
-		case string:
-			fv.SetString(x)
-		case int:
-			fv.SetInt(int64(x))
-		case float64:
-			fv.SetFloat(x)
-		case bool:
-			fv.SetBool(x)
+		switch d {
+		case datatype.String:
+			fv.SetString(v.(string))
+		case datatype.Int:
+			switch x := v.(type) {
+			case float64: // json unmarshalling of int into a interface{}
+				fv.SetInt(int64(x))
+			case int:
+				fv.SetInt(int64(x))
+			}
+		case datatype.Bool:
+			fv.SetBool(v.(bool))
 		default:
 			fmt.Printf("%s\n", v)
 		}
