@@ -37,6 +37,16 @@ paths:
             index: id
             fields:
               - "{name}"
+  lauren:
+    methods:
+      GET:
+        query:
+          action: select
+          entity: person
+          filter:
+            index: id
+            fields:
+              - "lauren"
   c:
     methods:
       GET:
@@ -56,10 +66,10 @@ storage:
         email: String
         age: Int
       indexes:
-        - name: id
+        id:
           field: name
           unique: true
-        - name: age
+        age:
   data:
     person:
       - name: jason

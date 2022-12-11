@@ -22,14 +22,14 @@ type Data map[string]interface{}
 type Fields map[string]datatype.DataType
 type Entities map[string]*Entity
 type Index struct {
-	Name   string   `json:"name" yaml:"name"`
+	name   string
 	Field  string   `json:"field,omitempty" yaml:"field,omitempty"`
 	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
 	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
 }
 type Entity struct {
-	Table   Table   `json:"fields" yaml:"fields"`
-	Indexes []Index `json:"indexes" yaml:"indexes"`
+	Table   Table             `json:"fields" yaml:"fields"`
+	Indexes map[string]*Index `json:"indexes" yaml:"indexes"`
 }
 type Table struct {
 	structType reflect.Type
@@ -48,9 +48,13 @@ func (s *Store) buildSchema() *memdb.DBSchema {
 			Name: entityName,
 		}
 		indexes := make(map[string]*memdb.IndexSchema)
-		for _, index := range definition.Indexes {
-			indexes[lower.String(index.Name)] = &memdb.IndexSchema{
-				Name:    lower.String(index.Name),
+		for name, index := range definition.Indexes {
+			if index == nil {
+				index = &Index{Field: name}
+			}
+			index.name = name
+			indexes[lower.String(name)] = &memdb.IndexSchema{
+				Name:    lower.String(name),
 				Unique:  index.Unique,
 				Indexer: definition.Table.fields.Indexer(index),
 			}
@@ -168,8 +172,8 @@ func (t *Table) Fields() Fields {
 	return t.fields
 }
 
-func (f Fields) Indexer(index Index) memdb.Indexer {
-	fieldName := index.Name
+func (f Fields) Indexer(index *Index) memdb.Indexer {
+	fieldName := index.name
 	if index.Field != "" {
 		fieldName = index.Field
 	} else if len(index.Fields) > 0 {
@@ -178,7 +182,7 @@ func (f Fields) Indexer(index Index) memdb.Indexer {
 	fieldName = title.String(fieldName)
 	d, ok := f[lower.String(fieldName)]
 	if !ok {
-		log.Fatalf("unknown index field: %s", index.Name)
+		log.Fatalf("unknown index field: %s", index.name)
 		return nil
 	}
 	switch d {
@@ -198,29 +202,37 @@ func (s *Store) Select(query *Query, args map[string]string) ([]byte, error) {
 	defer txn.Abort()
 
 	filter := "id"
+	values := make([]interface{}, 0)
 
 	if query.Filter != nil {
 		if query.Filter.Index != nil {
 			filter = *query.Filter.Index
 		}
-	} // build array of filter fields
+		for _, name := range query.Filter.Fields {
+			if value, ok := args[name]; ok {
+				name = value
+			}
+			values = append(values, name)
+		}
+
+	}
 
 	// List all entries
-	it, err := txn.Get(query.Entity, filter, args[query.Filter.Fields[0]])
+	it, err := txn.Get(query.Entity, filter, values...)
 	if err != nil {
 		panic(err)
 	}
 
 	var bs []byte
-	x := make([][]byte, 0, 0)
+	result := make([]json.RawMessage, 0, 0)
 	for obj := it.Next(); obj != nil; obj = it.Next() {
 		bs, err = json.Marshal(obj)
 		if err != nil {
 			return nil, err
 		}
-		x = append(x, bs)
+		result = append(result, bs)
 	}
-	bs, err = json.Marshal(x)
+	bs, err = json.Marshal(result)
 	if err != nil {
 		return nil, err
 	}
