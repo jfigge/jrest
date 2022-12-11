@@ -1,6 +1,8 @@
 package handlers
 
-import "log"
+import (
+	"log"
+)
 
 const (
 	Attributes = 1

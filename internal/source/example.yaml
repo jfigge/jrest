@@ -7,44 +7,36 @@ tls:
   certFile: ./certs/tls.crt
   keyFile: ./certs/tls.key
 paths:
-  a:
+  health:
+    methods:
+      GET:
+        status_code: 200
+        content: '{"status": "Up"}'
+  person:
     auth:
       credentials:
         jason: figge
     methods:
       GET:
-        status_code: 200
-        content: '{"data": "a}'
-  b/{email}:
+        query:
+          action: select
+          entity: person
+          page: 1
+          page_size: 2
+
+  person/{name}:
     auth:
       credentials:
         jason: figge
     methods:
       GET:
-        status_code: 200
-        content: '{"data": "b/${email}"}'
-  a/{email}/c:
-    auth:
-      credentials:
-        jason: figge
-    methods:
-      GET:
-        status_code: 200
-        content: '{"data": "  a/{email}/c"}'
-  a/{name}/c/{age}:
-    auth:
-      credentials:
-        jason: figge
-    methods:
-      GET:
-        status_code: 200
-        content: '{"data": "a/{name}/c/{age}"}'
-  a/{name}:
-    methods:
-      GET:
-        status_code: 200
-        content: '{"data": "a/{name}"}'
-        lookup: person
+        query:
+          action: select
+          entity: person
+          filter:
+            index: id
+            fields:
+              - "{name}"
   c:
     methods:
       GET:
@@ -62,10 +54,10 @@ storage:
       fields:
         name: String
         email: String
-        Age: Int
+        age: Int
       indexes:
         - name: id
-          field: email
+          field: name
           unique: true
         - name: age
   data:
@@ -76,3 +68,9 @@ storage:
       - name: lauren
         email: lauren.figge@gmail.com
         age: 48
+      - name: coen
+        email: coen.figge@gmail.com
+        age: 15
+      - name: anneka
+        email: anneka.figge@gmail.com
+        age: 12

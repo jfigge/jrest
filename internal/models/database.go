@@ -20,9 +20,7 @@ var (
 
 type Data map[string]interface{}
 type Fields map[string]datatype.DataType
-
 type Entities map[string]*Entity
-
 type Index struct {
 	Name   string   `json:"name" yaml:"name"`
 	Field  string   `json:"field,omitempty" yaml:"field,omitempty"`
@@ -40,6 +38,7 @@ type Table struct {
 type Store struct {
 	Entities Entities          `json:"entities" yaml:"entities"`
 	Data     map[string][]Data `json:"data,omitempty" yaml:"data,omitempty"`
+	DB       *memdb.MemDB
 }
 
 func (s *Store) buildSchema() *memdb.DBSchema {
@@ -76,7 +75,6 @@ func (t *Table) UnmarshalYAML(value *yaml.Node) error {
 	t.mapToStruct()
 	return nil
 }
-
 func (t *Table) UnmarshalJSON(data []byte) error {
 	tmp := make(map[string]string)
 	err := json.Unmarshal(data, &tmp)
@@ -93,7 +91,6 @@ func (t *Table) UnmarshalJSON(data []byte) error {
 	t.mapToStruct()
 	return nil
 }
-
 func (t *Table) mapToStruct() {
 	var structFields []reflect.StructField
 
@@ -110,16 +107,15 @@ func (t *Table) mapToStruct() {
 			sf.Type = reflect.TypeOf(false)
 		}
 		structFields = append(structFields, sf)
+		sf.Tag = reflect.StructTag(fmt.Sprintf(`"json:"%[1]s" yaml"%[1]s"`, k))
 	}
 
 	// Creates the struct type
 	t.structType = reflect.StructOf(structFields)
 }
-
 func (t *Table) getInstance() reflect.Value {
 	return reflect.New(t.structType)
 }
-
 func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 	for k, v := range row {
 		d := t.fields[lower.String(k)]
@@ -129,7 +125,7 @@ func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 			fv.SetString(v.(string))
 		case datatype.Int:
 			switch x := v.(type) {
-			case float64: // json unmarshalling of int into a interface{}
+			case float64: // json unmarshalling of int into an interface{}
 				fv.SetInt(int64(x))
 			case int:
 				fv.SetInt(int64(x))
@@ -142,7 +138,6 @@ func (t *Table) setValues(s reflect.Value, row Data) reflect.Value {
 	}
 	return s
 }
-
 func (t *Table) toMap(s interface{}) map[string]interface{} {
 	modelReflect := reflect.ValueOf(s)
 	if modelReflect.Kind() == reflect.Ptr {
@@ -169,7 +164,6 @@ func (t *Table) toMap(s interface{}) map[string]interface{} {
 	}
 	return m
 }
-
 func (t *Table) Fields() Fields {
 	return t.fields
 }
@@ -196,4 +190,51 @@ func (f Fields) Indexer(index Index) memdb.Indexer {
 		return &memdb.BoolFieldIndex{Field: fieldName}
 	}
 	return nil
+}
+
+func (s *Store) Select(query *Query, args map[string]string) ([]byte, error) {
+	// Create read-only transaction
+	txn := s.DB.Txn(false)
+	defer txn.Abort()
+
+	filter := "id"
+
+	if query.Filter != nil {
+		if query.Filter.Index != nil {
+			filter = *query.Filter.Index
+		}
+	} // build array of filter fields
+
+	// List all entries
+	it, err := txn.Get(query.Entity, filter, args[query.Filter.Fields[0]])
+	if err != nil {
+		panic(err)
+	}
+
+	var bs []byte
+	x := make([][]byte, 0, 0)
+	for obj := it.Next(); obj != nil; obj = it.Next() {
+		bs, err = json.Marshal(obj)
+		if err != nil {
+			return nil, err
+		}
+		x = append(x, bs)
+	}
+	bs, err = json.Marshal(x)
+	if err != nil {
+		return nil, err
+	}
+	return bs, nil
+}
+
+func (s *Store) Insert() int {
+	return 0
+}
+
+func (s *Store) DeleteOne() int {
+	return 0
+}
+
+func (s *Store) DeleteAll() int {
+	return 0
 }

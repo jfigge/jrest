@@ -24,8 +24,8 @@ func BaseHandler(source *models.Source) http.Handler {
 		ctx := r.Context()
 		ctx = context.WithValue(ctx, handlers.Attributes, attr)
 		ctx = context.WithValue(ctx, handlers.Path, path)
-		if source.DB != nil {
-			ctx = context.WithValue(ctx, handlers.Store, source.DB)
+		if source.Storage.DB != nil {
+			ctx = context.WithValue(ctx, handlers.Store, source.Storage)
 		}
 
 		auth := source.Authentication

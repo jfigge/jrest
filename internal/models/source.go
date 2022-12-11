@@ -28,11 +28,24 @@ type Paths struct {
 type Methods map[string]*Response
 type Schema map[string]interface{}
 
+type Filter struct {
+	Index  *string  `json:"index,omitempty" yaml:"index,omitempty"`
+	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
+}
+type Query struct {
+	Action   string  `json:"action" yaml:"action"`
+	Entity   string  `json:"entity" yaml:"entity"`
+	Filter   *Filter `json:"filter,omitempty" yaml:"filter,omitempty"`
+	Page     *int    `json:"page,omitempty" yaml:"page,omitempty"`
+	PageSize *int    `json:"page_size,omitempty" yaml:"page_size,omitempty"`
+}
+
 type Response struct {
 	Authentication *Authentication   `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Status         int               `json:"status_code,omitempty" yaml:"status_code,omitempty"`
 	Content        *string           `json:"content" yaml:"content"`
 	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
+	Query          *Query            `json:"query" yaml:"query"`
 }
 
 type Authentication struct {
@@ -59,7 +72,6 @@ type Source struct {
 	Authentication *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Paths          Paths           `json:"paths" yaml:"paths"`
 	Storage        *Store          `json:"storage,omitempty" yaml:"storage,omitempty"`
-	DB             *memdb.MemDB
 }
 
 func (s *Source) ApplyDefaults() {
@@ -103,13 +115,13 @@ func (s *Source) LogPaths() {
 
 func (s *Source) ConfigureMemDB() {
 	if s.Storage == nil || len(s.Storage.Entities) == 0 {
-		s.DB = nil
+		s.Storage.DB = nil
 		return
 	}
 
 	// Create a new database
 	var err error
-	s.DB, err = memdb.NewMemDB(s.Storage.buildSchema())
+	s.Storage.DB, err = memdb.NewMemDB(s.Storage.buildSchema())
 	if err != nil {
 		log.Fatalf("Unable to start database: %v", err)
 		return
@@ -118,7 +130,7 @@ func (s *Source) ConfigureMemDB() {
 	// Load test data
 	if s.Storage.Data != nil {
 		// Create a writeable transaction
-		txn := s.DB.Txn(true)
+		txn := s.Storage.DB.Txn(true)
 		defer txn.Abort()
 
 		for entityName, rows := range s.Storage.Data {
@@ -140,44 +152,44 @@ func (s *Source) ConfigureMemDB() {
 		// Commit the transaction
 		txn.Commit()
 
-		// Create read-only transaction
-		txn = s.DB.Txn(false)
-		defer txn.Abort()
-
-		// Lookup by email
-		var raw interface{}
-		raw, err = txn.First("person", "id", "jason.figge@gmail.com")
-		if err != nil {
-			panic(err)
-		}
-
-		// Say hi!
-		table := s.Storage.Entities["person"].Table
-		fmt.Printf("Hello %v!\n", table.toMap(raw)["Name"])
-
-		// List all the people
-		var it memdb.ResultIterator
-		it, err = txn.Get("person", "id")
-		if err != nil {
-			panic(err)
-		}
-
-		fmt.Println("All the people:")
-		for obj := it.Next(); obj != nil; obj = it.Next() {
-			p := table.toMap(obj)
-			fmt.Printf("  %-8s%v\n", fmt.Sprintf("%s:", p["Name"]), p["Age"])
-		}
-
-		// Range scan over people with ages between 25 and 35 inclusive
-		it, err = txn.LowerBound("person", "age", 49)
-		if err != nil {
-			panic(err)
-		}
-		fmt.Println("All the people over 50:")
-		for obj := it.Next(); obj != nil; obj = it.Next() {
-			p := table.toMap(obj)
-			fmt.Printf("  %-8s%v\n", fmt.Sprintf("%s:", p["Name"]), p["Age"])
-		}
+		//// Create read-only transaction
+		//txn = s.DB.Txn(false)
+		//defer txn.Abort()
+		//
+		//// Lookup by email
+		//var raw interface{}
+		//raw, err = txn.First("person", "id", "jason.figge@gmail.com")
+		//if err != nil {
+		//	panic(err)
+		//}
+		//
+		//// Say hi!
+		//table := s.Storage.Entities["person"].Table
+		//fmt.Printf("Hello %v!\n", table.toMap(raw)["Name"])
+		//
+		//// List all the people
+		//var it memdb.ResultIterator
+		//it, err = txn.Get("person", "id")
+		//if err != nil {
+		//	panic(err)
+		//}
+		//
+		//fmt.Println("All the people:")
+		//for obj := it.Next(); obj != nil; obj = it.Next() {
+		//	p := table.toMap(obj)
+		//	fmt.Printf("  %-8s%v\n", fmt.Sprintf("%s:", p["Name"]), p["Age"])
+		//}
+		//
+		//// Range scan over people with ages between 25 and 35 inclusive
+		//it, err = txn.LowerBound("person", "age", 49)
+		//if err != nil {
+		//	panic(err)
+		//}
+		//fmt.Println("All the people over 50:")
+		//for obj := it.Next(); obj != nil; obj = it.Next() {
+		//	p := table.toMap(obj)
+		//	fmt.Printf("  %-8s%v\n", fmt.Sprintf("%s:", p["Name"]), p["Age"])
+		//}
 	}
 }
 
@@ -224,7 +236,10 @@ func (ps *Paths) UnmarshalYAML(value *yaml.Node) error {
 			name = name[1:]
 		}
 		path := &Path{}
-		value.Content[index+1].Decode(path)
+		err := value.Content[index+1].Decode(path)
+		if err != nil {
+			return err
+		}
 		ps.processPath(name, path)
 	}
 	return nil
