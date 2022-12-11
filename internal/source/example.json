@@ -10,7 +10,15 @@
     "keyFile": "./certs/tls.key"
   },
   "paths": {
-    "a": {
+    "health": {
+      "methods": {
+        "GET": {
+          "status_code": 200,
+          "content": "{\"status\": \"Up\"}"
+        }
+      }
+    },
+    "person": {
       "auth": {
         "credentials": {
           "jason": "figge"
@@ -18,12 +26,15 @@
       },
       "methods": {
         "GET": {
-          "status_code": 200,
-          "content": "{\"data\": \"a}"
+          "select": {
+            "entity": "person",
+            "page": 1,
+            "page_size": 2
+          }
         }
       }
     },
-    "b/{email}": {
+    "person/{name}": {
       "auth": {
         "credentials": {
           "jason": "figge"
@@ -31,43 +42,30 @@
       },
       "methods": {
         "GET": {
-          "status_code": 200,
-          "content": "{\"data\": \"b/${email}\"}"
+          "select": {
+            "entity": "person",
+            "filter": {
+              "index": "id",
+              "fields": [
+                "{name}"
+              ]
+            }
+          }
         }
       }
     },
-    "a/{email}/c": {
-      "auth": {
-        "credentials": {
-          "jason": "figge"
-        }
-      },
+    "lauren": {
       "methods": {
         "GET": {
-          "status_code": 200,
-          "content": "{\"data\": \"  a/{email}/c\"}"
-        }
-      }
-    },
-    "a/{name}/c/{age}": {
-      "auth": {
-        "credentials": {
-          "jason": "figge"
-        }
-      },
-      "methods": {
-        "GET": {
-          "status_code": 200,
-          "content": "{\"data\": \"a/{name}/c/{age}\"}"
-        }
-      }
-    },
-    "a/{name}": {
-      "methods": {
-        "GET": {
-          "status_code": 200,
-          "content": "{\"data\": \"a/{name}\"}",
-          "lookup": "person"
+          "select": {
+            "entity": "person",
+            "filter": {
+              "index": "id",
+              "fields": [
+                "lauren"
+              ]
+            }
+          }
         }
       }
     },
@@ -96,18 +94,15 @@
         "fields": {
           "name": "String",
           "email": "String",
-          "Age": "Int"
+          "age": "Int"
         },
-        "indexes": [
-          {
-            "name": "id",
-            "field": "email",
+        "indexes": {
+          "id": {
+            "field": "name",
             "unique": true
           },
-          {
-            "name": "age"
-          }
-        ]
+          "age": null
+        }
       }
     },
     "data": {
@@ -121,6 +116,16 @@
           "name": "lauren",
           "email": "lauren.figge@gmail.com",
           "age": 48
+        },
+        {
+          "name": "coen",
+          "email": "coen.figge@gmail.com",
+          "age": 15
+        },
+        {
+          "name": "anneka",
+          "email": "anneka.figge@gmail.com",
+          "age": 12
         }
       ]
     }

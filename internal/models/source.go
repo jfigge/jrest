@@ -15,54 +15,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-type PathMeta struct {
-	parts     []string
-	arguments map[int]string
-	path      *Path
-}
-type Paths struct {
-	audit   []string
-	static  map[string]*Path
-	dynamic []*PathMeta
-}
-type Methods map[string]*Response
-type Schema map[string]interface{}
-
-type Filter struct {
-	Index  *string  `json:"index,omitempty" yaml:"index,omitempty"`
-	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
-}
-type Query struct {
-	Action   string  `json:"action" yaml:"action"`
-	Entity   string  `json:"entity" yaml:"entity"`
-	Filter   *Filter `json:"filter,omitempty" yaml:"filter,omitempty"`
-	Page     *int    `json:"page,omitempty" yaml:"page,omitempty"`
-	PageSize *int    `json:"page_size,omitempty" yaml:"page_size,omitempty"`
-}
-
-type Response struct {
-	Authentication *Authentication   `json:"auth,omitempty" yaml:"auth,omitempty"`
-	Status         int               `json:"status_code,omitempty" yaml:"status_code,omitempty"`
-	Content        *string           `json:"content" yaml:"content"`
-	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
-	Query          *Query            `json:"query" yaml:"query"`
-}
-
-type Authentication struct {
-	Bearer      security.Claims `json:"bearer,omitempty" yaml:"bearer"`
-	Credentials security.Claims `json:"credentials,omitempty" yaml:"credentials"`
-}
-
-type Path struct {
-	Authentication *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
-	Methods        Methods         `json:"methods" yaml:"methods"`
-}
-
-type Tls struct {
-	CertFile string `json:"certFile" yaml:"certFile"`
-	KeyFile  string `json:"keyFile" yaml:"keyFile"`
-}
-
 type Source struct {
 	Host           string          `json:"host" yaml:"host" default:"127.0.0.1"`
 	Base           string          `json:"base" yaml:"base" default:"/"`
@@ -72,6 +24,49 @@ type Source struct {
 	Authentication *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
 	Paths          Paths           `json:"paths" yaml:"paths"`
 	Storage        *Store          `json:"storage,omitempty" yaml:"storage,omitempty"`
+}
+type Tls struct {
+	CertFile string `json:"certFile" yaml:"certFile"`
+	KeyFile  string `json:"keyFile" yaml:"keyFile"`
+}
+type Authentication struct {
+	Bearer      security.Claims `json:"bearer,omitempty" yaml:"bearer"`
+	Credentials security.Claims `json:"credentials,omitempty" yaml:"credentials"`
+}
+type Paths struct {
+	audit   []string
+	dynamic []*PathMeta
+	static  map[string]*Path
+}
+type PathMeta struct {
+	parts     []string
+	arguments map[int]string
+	path      *Path
+}
+type Path struct {
+	Authentication *Authentication `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Methods        Methods         `json:"methods" yaml:"methods"`
+}
+type Methods map[string]*Response
+type Response struct {
+	Authentication *Authentication   `json:"auth,omitempty" yaml:"auth,omitempty"`
+	Status         int               `json:"status_code,omitempty" yaml:"status_code,omitempty"`
+	Content        *string           `json:"content" yaml:"content"`
+	Headers        map[string]string `json:"headers,omitempty" yaml:"headers"`
+	Select         *Query            `json:"select" yaml:"select"`
+	Insert         *Query            `json:"insert" yaml:"insert"`
+	Delete         *Query            `json:"delete" yaml:"delete"`
+}
+type Query struct {
+	Action   string  `json:"action" yaml:"action"`
+	Entity   string  `json:"entity" yaml:"entity"`
+	Filter   *Filter `json:"filter,omitempty" yaml:"filter,omitempty"`
+	Page     *int    `json:"page,omitempty" yaml:"page,omitempty"`
+	PageSize *int    `json:"page_size,omitempty" yaml:"page_size,omitempty"`
+}
+type Filter struct {
+	Index  *string  `json:"index,omitempty" yaml:"index,omitempty"`
+	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
 }
 
 func (s *Source) ApplyDefaults() {

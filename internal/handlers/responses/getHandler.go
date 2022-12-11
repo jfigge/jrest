@@ -21,9 +21,9 @@ func getHandler(response *models.Response) http.Handler {
 		respData := ""
 		if response.Content != nil {
 			respData = *response.Content
-		} else if response.Query != nil && ctx.Value(handlers.Store) != nil {
+		} else if response.Select != nil && ctx.Value(handlers.Store) != nil {
 			db := ctx.Value(handlers.Store).(*models.Store)
-			bs, err := db.Select(response.Query, args)
+			bs, err := db.Select(response.Select, args)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
 				handlers.AuditLog(r.Method, path, fmt.Sprintf("%d", response.Status))

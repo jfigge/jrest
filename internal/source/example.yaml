@@ -18,8 +18,7 @@ paths:
         jason: figge
     methods:
       GET:
-        query:
-          action: select
+        select:
           entity: person
           page: 1
           page_size: 2
@@ -30,8 +29,7 @@ paths:
         jason: figge
     methods:
       GET:
-        query:
-          action: select
+        select:
           entity: person
           filter:
             index: id
@@ -40,8 +38,7 @@ paths:
   lauren:
     methods:
       GET:
-        query:
-          action: select
+        select:
           entity: person
           filter:
             index: id

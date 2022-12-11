@@ -18,15 +18,13 @@ var (
 	title = cases.Title(language.Und)
 )
 
-type Data map[string]interface{}
-type Fields map[string]datatype.DataType
-type Entities map[string]*Entity
-type Index struct {
-	name   string
-	Field  string   `json:"field,omitempty" yaml:"field,omitempty"`
-	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
-	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
+type Store struct {
+	Entities Entities          `json:"entities" yaml:"entities"`
+	Data     map[string][]Data `json:"data,omitempty" yaml:"data,omitempty"`
+	DB       *memdb.MemDB
 }
+type Data map[string]interface{}
+type Entities map[string]*Entity
 type Entity struct {
 	Table   Table             `json:"fields" yaml:"fields"`
 	Indexes map[string]*Index `json:"indexes" yaml:"indexes"`
@@ -35,10 +33,12 @@ type Table struct {
 	structType reflect.Type
 	fields     Fields
 }
-type Store struct {
-	Entities Entities          `json:"entities" yaml:"entities"`
-	Data     map[string][]Data `json:"data,omitempty" yaml:"data,omitempty"`
-	DB       *memdb.MemDB
+type Fields map[string]datatype.DataType
+type Index struct {
+	name   string
+	Field  string   `json:"field,omitempty" yaml:"field,omitempty"`
+	Fields []string `json:"fields,omitempty" yaml:"fields,omitempty"`
+	Unique bool     `json:"unique,omitempty" yaml:"unique,omitempty"`
 }
 
 func (s *Store) buildSchema() *memdb.DBSchema {
